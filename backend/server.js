@@ -11,26 +11,26 @@ const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const path = require("path");
 
 const app = express();
 
 app.use(express.json({ limit: "1mb" }));
-// app.use(cors({
-//     origin: ["http://localhost:3000", "http://localhost:5500", "http://127.0.0.1:5500"],
-//     credentials: true
-// }));
 
+// Updated CORS for Render deployment
 app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-    "https://jiu-2.onrender.com"
-  ],
-  credentials: true
+    origin: [
+        "https://jiu-2.onrender.com",
+        "http://localhost:3000",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500"
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -38,6 +38,14 @@ const apiLimiter = rateLimit({
     message: { message: "Too many requests. Please try again later." }
 });
 app.use("/api/", apiLimiter);
+
+// Serve static files from 'public' directory (for frontend)
+app.use(express.static(path.join(__dirname, "public")));
+
+// Handle SPA routing - serve index.html for non-API routes
+app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://hoyo:0987@cluster0.hsrxvv4.mongodb.net/jubba_system?retryWrites=true&w=majority&appName=Cluster0";
@@ -79,6 +87,25 @@ const adminSchema = new mongoose.Schema({
 });
 
 const Admin = mongoose.model("Admin", adminSchema);
+
+// --- Seed default admin if not exists ---
+async function seedDefaultAdmin() {
+    try {
+        const adminCount = await Admin.countDocuments();
+        if (adminCount === 0) {
+            const hashedPassword = await bcrypt.hash("admin123", 10);
+            await Admin.create({
+                username: "admin",
+                password: hashedPassword,
+                role: "admin"
+            });
+            console.log("Default admin created - Username: admin, Password: admin123");
+        }
+    } catch (err) {
+        console.error("Error seeding admin:", err);
+    }
+}
+seedDefaultAdmin();
 
 // --- Grade Calculation ---
 
@@ -148,6 +175,11 @@ const verifyAdmin = (req, res, next) => {
 };
 
 // --- Routes ---
+
+// Health check endpoint for Render
+app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 app.post("/api/auth/login", async (req, res) => {
     try {
@@ -332,7 +364,6 @@ app.post("/api/results/add", verifyAdmin, async (req, res) => {
         const targetSubject = subject.trim().toLowerCase();
         const targetSemester = parseInt(semester);
 
-        // Find existing entry for upsert
         const existing = student.results.find(r =>
             r.subject.trim().toLowerCase() === targetSubject && r.semester === targetSemester
         );
@@ -374,6 +405,6 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: "Internal server error." });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
 });
