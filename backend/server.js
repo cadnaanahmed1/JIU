@@ -1,6 +1,5 @@
 /**
  * Jubba International University - Backend Server
- * File: backend/server.js
  */
 
 require("dotenv").config();
@@ -12,19 +11,14 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
 
 app.use(express.json({ limit: "1mb" }));
 
-// Updated CORS for Render deployment
 app.use(cors({
-    origin: [
-        "https://jiu-2.onrender.com",
-        "http://localhost:3000",
-        "http://localhost:5500",
-        "http://127.0.0.1:5500"
-    ],
+    origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
@@ -39,13 +33,14 @@ const apiLimiter = rateLimit({
 });
 app.use("/api/", apiLimiter);
 
-// Serve static files from 'public' directory (for frontend)
-app.use(express.static(path.join(__dirname, "public")));
-
-// Handle SPA routing - serve index.html for non-API routes
-app.get(/^\/(?!api).*/, (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+// Serve frontend from ../frontend folder
+const frontendDir = path.join(__dirname, "..", "frontend");
+if (fs.existsSync(frontendDir)) {
+    app.use(express.static(frontendDir));
+    console.log("Serving frontend from:", frontendDir);
+} else {
+    console.log("Warning: Frontend folder not found at:", frontendDir);
+}
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://hoyo:0987@cluster0.hsrxvv4.mongodb.net/jubba_system?retryWrites=true&w=majority&appName=Cluster0";
@@ -88,7 +83,7 @@ const adminSchema = new mongoose.Schema({
 
 const Admin = mongoose.model("Admin", adminSchema);
 
-// --- Seed default admin if not exists ---
+// --- Seed default admin ---
 async function seedDefaultAdmin() {
     try {
         const adminCount = await Admin.countDocuments();
@@ -102,7 +97,7 @@ async function seedDefaultAdmin() {
             console.log("Default admin created - Username: admin, Password: admin123");
         }
     } catch (err) {
-        console.error("Error seeding admin:", err);
+        console.error("Error seeding admin:", err.message);
     }
 }
 seedDefaultAdmin();
@@ -176,7 +171,6 @@ const verifyAdmin = (req, res, next) => {
 
 // --- Routes ---
 
-// Health check endpoint for Render
 app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
@@ -399,9 +393,17 @@ app.post("/api/results/add", verifyAdmin, async (req, res) => {
     }
 });
 
+// Root route
+app.get("/", (req, res) => {
+    res.json({ 
+        message: "JIU Portal API", 
+        version: "1.0.0"
+    });
+});
+
 // Global error handler
 app.use((err, req, res, next) => {
-    console.error("Unhandled error:", err);
+    console.error("Unhandled error:", err.message);
     res.status(500).json({ message: "Internal server error." });
 });
 
