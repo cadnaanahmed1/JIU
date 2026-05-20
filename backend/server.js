@@ -15,10 +15,21 @@ const rateLimit = require("express-rate-limit");
 const app = express();
 
 app.use(express.json({ limit: "1mb" }));
+// app.use(cors({
+//     origin: ["http://localhost:3000", "http://localhost:5500", "http://127.0.0.1:5500"],
+//     credentials: true
+// }));
+
 app.use(cors({
-    origin: ["http://localhost:3000", "http://localhost:5500", "http://127.0.0.1:5500"],
-    credentials: true
+  origin: [
+    "http://localhost:3000",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+    "https://jiu-2.onrender.com"
+  ],
+  credentials: true
 }));
+
 app.use(helmet({ contentSecurityPolicy: false }));
 
 const apiLimiter = rateLimit({
