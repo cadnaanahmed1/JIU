@@ -3,8 +3,6 @@
  * File: frontend/app.js
  */
 
-// const API_BASE_URL = "http://localhost:5000/api";
-//const API_BASE_URL = "https://jiu-2.onrender.com/";
 const API_BASE_URL = "https://jiu-2.onrender.com/api";
 const JIU_LOGO = "https://z-cdn-media.chatglm.cn/files/28654fbc-c7d2-4fc4-97e8-acd903af6b4a.png?auth_key=1879268441-b74f70a21fb848dcbf31df2a382b6932-0-40b9ad4fb5c63b6af961916dadf5040e";
 
@@ -21,14 +19,12 @@ let pendingDeleteId = null;
 document.addEventListener("DOMContentLoaded", () => {
     evaluateSessionPersistenceOnMount();
 
-    // Close sidebar on resize to desktop
     window.addEventListener("resize", () => {
         if (window.innerWidth > 991) {
             closeSidebar();
         }
     });
 
-    // Close modals on Escape key
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
             closeStudentFormModal();
@@ -37,6 +33,35 @@ document.addEventListener("DOMContentLoaded", () => {
             closeSidebar();
         }
     });
+
+    // Wire up delete confirm button
+    const confirmBtn = document.getElementById("btn-confirm-delete-action");
+    if (confirmBtn) {
+        confirmBtn.addEventListener("click", async () => {
+            if (!pendingDeleteId) return;
+            const idToDelete = pendingDeleteId;
+            closeDeleteConfirmModal();
+
+            try {
+                toggleLoadingSpinner(true);
+                const response = await fetch(`${API_BASE_URL}/students/${idToDelete}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${sessionStorageToken}` }
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || "Delete failed.");
+
+                displaySystemAlertNotification("Student record deleted.");
+                fetchAdministrativeStudentDataList();
+
+            } catch (err) {
+                displaySystemAlertNotification(err.message, "error");
+            } finally {
+                toggleLoadingSpinner(false);
+            }
+        });
+    }
 });
 
 // ==========================================================================
@@ -121,7 +146,6 @@ function switchLoginTab(role) {
         if (inputIdentity) inputIdentity.placeholder = "JIU/001/2026";
     }
 
-    // Clear fields on tab switch
     if (inputIdentity) inputIdentity.value = "";
     const passField = document.getElementById("input-secret");
     if (passField) passField.value = "";
@@ -165,7 +189,6 @@ async function executeAuthenticationForm(event) {
         evaluateSessionPersistenceOnMount();
         displaySystemAlertNotification("Welcome to JIU Portal.");
 
-        // Clear form
         document.getElementById("input-identity").value = "";
         document.getElementById("input-secret").value = "";
 
@@ -236,7 +259,6 @@ function navigateToPanel(panelName) {
 
     closeSidebar();
 
-    // Hide all panels, deactivate all menu items
     panels.forEach(p => {
         const panel = document.getElementById(`panel-${p}`);
         const menu = document.getElementById(`menu-item-${p}`);
@@ -244,13 +266,11 @@ function navigateToPanel(panelName) {
         if (menu) menu.classList.remove("active");
     });
 
-    // Activate selected
     const activePanel = document.getElementById(`panel-${panelName}`);
     const activeMenu = document.getElementById(`menu-item-${panelName}`);
     if (activePanel) activePanel.classList.remove("hidden");
     if (activeMenu) activeMenu.classList.add("active");
 
-    // Back button for admin viewing student transcript
     if (btnBackAdmin) {
         if (panelName === "dashboard" && cachedRole === "admin") {
             btnBackAdmin.classList.remove("hidden");
@@ -259,7 +279,6 @@ function navigateToPanel(panelName) {
         }
     }
 
-    // Load data based on panel
     if (panelName === "dashboard" || panelName === "profile") {
         if (cachedRole === "student" && sessionUserRecord) {
             fetchStudentPersonaDataset(sessionUserRecord.id);
@@ -289,19 +308,16 @@ async function fetchStudentPersonaDataset(studentMongoId) {
 
         currentViewingStudentId = studentMongoId;
 
-        // Update metric cards
         setTextContent("txt-gpa-semester", Number(data.semesterGPA || 0).toFixed(2));
         setTextContent("txt-gpa-cumulative", Number(data.overallGPA || 0).toFixed(2));
         setTextContent("txt-total-subjects", data.results ? data.results.length : 0);
 
-        // Update profile fields
         setTextContent("profile-card-name", data.fullname || "---");
         setTextContent("profile-card-id", data.studentId || "---");
         setTextContent("prof-faculty", data.faculty || "---");
         setTextContent("prof-dept", data.department || "---");
         setTextContent("prof-semester", data.semester ? `Semester ${data.semester}` : "---");
 
-        // Update print letterhead
         const printSummary = document.getElementById("print-student-meta-summary");
         if (printSummary) {
             printSummary.innerHTML = `
@@ -314,7 +330,6 @@ async function fetchStudentPersonaDataset(studentMongoId) {
             `;
         }
 
-        // Render results table
         renderResultsTable(data.results);
 
     } catch (err) {
@@ -437,7 +452,6 @@ function openStudentCreationModal() {
     document.getElementById("form-student-pass").value = "";
     document.getElementById("student-modal-title").textContent = "Add New Student";
 
-    // Show password field for new students
     const passNode = document.getElementById("pass-field-visibility-node");
     if (passNode) passNode.classList.remove("hidden");
 
@@ -550,7 +564,6 @@ async function handleScoreFormSubmission(event) {
         displaySystemAlertNotification("Grade saved successfully.");
         closeScoreFormModal();
 
-        // Refresh both views if admin is looking at this student
         currentViewingStudentId = targetUuid;
         if (sessionUserRecord && sessionUserRecord.id === targetUuid) {
             fetchStudentPersonaDataset(targetUuid);
@@ -565,7 +578,7 @@ async function handleScoreFormSubmission(event) {
 }
 
 // ==========================================================================
-// MODALS: DELETE CONFIRMATION (replaces browser confirm())
+// MODALS: DELETE CONFIRMATION
 // ==========================================================================
 
 function openDeleteConfirmModal(studentId) {
@@ -577,37 +590,6 @@ function closeDeleteConfirmModal() {
     pendingDeleteId = null;
     document.getElementById("modal-confirm-delete").classList.add("hidden");
 }
-
-// Wire up the confirm button
-document.addEventListener("DOMContentLoaded", () => {
-    const confirmBtn = document.getElementById("btn-confirm-delete-action");
-    if (confirmBtn) {
-        confirmBtn.addEventListener("click", async () => {
-            if (!pendingDeleteId) return;
-            const idToDelete = pendingDeleteId;
-            closeDeleteConfirmModal();
-
-            try {
-                toggleLoadingSpinner(true);
-                const response = await fetch(`${API_BASE_URL}/students/${idToDelete}`, {
-                    method: "DELETE",
-                    headers: { "Authorization": `Bearer ${sessionStorageToken}` }
-                });
-
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.message || "Delete failed.");
-
-                displaySystemAlertNotification("Student record deleted.");
-                fetchAdministrativeStudentDataList();
-
-            } catch (err) {
-                displaySystemAlertNotification(err.message, "error");
-            } finally {
-                toggleLoadingSpinner(false);
-            }
-        });
-    }
-});
 
 // ==========================================================================
 // PRINT
