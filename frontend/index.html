@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JIU | Student Result Management System</title>
+    <link rel="icon" type="image/png"
+        href="https://z-cdn-media.chatglm.cn/files/28654fbc-c7d2-4fc4-97e8-acd903af6b4a.png?auth_key=1879268441-b74f70a21fb848dcbf31df2a382b6932-0-40b9ad4fb5c63b6af961916dadf5040e">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <div id="loading-overlay" class="loader-overlay hidden">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- ========== LOGIN VIEW ========== -->
+    <div id="view-login" class="login-wrapper">
+        <div class="login-card">
+            <div class="login-header">
+                <img src="https://z-cdn-media.chatglm.cn/files/28654fbc-c7d2-4fc4-97e8-acd903af6b4a.png?auth_key=1879268441-b74f70a21fb848dcbf31df2a382b6932-0-40b9ad4fb5c63b6af961916dadf5040e"
+                    alt="Jubba International University Logo">
+                <h2>Jubba International University</h2>
+                <p>Student Result Management System</p>
+            </div>
+
+            <div class="tab-control">
+                <button id="btn-tab-student" class="tab-btn active" onclick="switchLoginTab('student')">
+                    <i class="fas fa-user-graduate"></i> Student
+                </button>
+                <button id="btn-tab-admin" class="tab-btn" onclick="switchLoginTab('admin')">
+                    <i class="fas fa-user-shield"></i> Admin
+                </button>
+            </div>
+
+            <form id="form-auth" onsubmit="executeAuthenticationForm(event)">
+                <div class="input-group">
+                    <label id="lbl-identity" for="input-identity">Student ID</label>
+                    <div class="field-icon-wrapper">
+                        <i id="icon-identity" class="fas fa-id-card"></i>
+                        <input type="text" id="input-identity" placeholder="JIU/001/2026" required
+                            autocomplete="username">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="input-secret">Password</label>
+                    <div class="field-icon-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="input-secret" placeholder="Enter your password" required
+                            autocomplete="current-password">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== PORTAL VIEW ========== -->
+    <div id="view-portal" class="portal-container hidden">
+
+        <header class="top-navbar no-print">
+            <div class="brand-meta">
+                <i class="fas fa-bars sidebar-toggle-trigger" onclick="toggleSidebarViewMenu()"
+                    aria-label="Toggle menu"></i>
+                <img src="https://z-cdn-media.chatglm.cn/files/28654fbc-c7d2-4fc4-97e8-acd903af6b4a.png?auth_key=1879268441-b74f70a21fb848dcbf31df2a382b6932-0-40b9ad4fb5c63b6af961916dadf5040e"
+                    alt="JIU">
+                <h3 class="brand-title">JIU Portal</h3>
+            </div>
+            <div class="profile-meta-actions">
+                <span id="global-user-display"><i class="fas fa-user-circle"></i> <span>Active</span></span>
+                <button class="btn btn-danger btn-sm" onclick="terminateUserSession()"><i
+                        class="fas fa-sign-out-alt"></i> <span class="btn-label">Logout</span></button>
+            </div>
+        </header>
+
+        <!-- Sidebar overlay backdrop for mobile -->
+        <div id="sidebar-backdrop" class="sidebar-backdrop hidden" onclick="toggleSidebarViewMenu()"></div>
+
+        <div class="workspace-wrapper">
+            <aside id="sidebar-panel" class="sidebar no-print">
+                <div class="sidebar-user-info">
+                    <img src="https://z-cdn-media.chatglm.cn/files/28654fbc-c7d2-4fc4-97e8-acd903af6b4a.png?auth_key=1879268441-b74f70a21fb848dcbf31df2a382b6932-0-40b9ad4fb5c63b6af961916dadf5040e"
+                        alt="JIU" class="sidebar-logo">
+                    <span class="sidebar-label">Navigation</span>
+                </div>
+                <ul class="sidebar-menu">
+                    <li id="menu-item-dashboard" class="active" onclick="navigateToPanel('dashboard')">
+                        <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+                    </li>
+                    <li id="menu-item-profile" onclick="navigateToPanel('profile')">
+                        <i class="fas fa-user-graduate"></i> <span>My Profile</span>
+                    </li>
+                    <li id="menu-item-admin" class="admin-only hidden" onclick="navigateToPanel('admin')">
+                        <i class="fas fa-tools"></i> <span>Admin Panel</span>
+                    </li>
+                </ul>
+            </aside>
+
+            <main class="content-frame">
+
+                <!-- ===== DASHBOARD PANEL ===== -->
+                <section id="panel-dashboard" class="sub-panel printable-transcript-section">
+
+                    <!-- Print-only letterhead (hidden on screen) -->
+                    <div class="print-official-letterhead">
+                        <img src="https://z-cdn-media.chatglm.cn/files/28654fbc-c7d2-4fc4-97e8-acd903af6b4a.png?auth_key=1879268441-b74f70a21fb848dcbf31df2a382b6932-0-40b9ad4fb5c63b6af961916dadf5040e"
+                            alt="JIU Emblem">
+                        <h2>JUBBA INTERNATIONAL UNIVERSITY</h2>
+                        <p>Official Academic Transcript</p>
+                        <div id="print-student-meta-summary" class="print-meta-grid"></div>
+                    </div>
+
+                    <div class="view-header-title no-print">
+                        <h2>Academic Performance</h2>
+                        <div class="action-buttons-row">
+                            <button id="btn-back-to-admin" class="btn btn-secondary btn-sm hidden"
+                                onclick="navigateToPanel('admin')"><i class="fas fa-arrow-left"></i> <span
+                                    class="btn-label">Back</span></button>
+                            <button class="btn btn-primary btn-sm" onclick="printTargetedTranscript()"><i
+                                    class="fas fa-print"></i> <span class="btn-label">Print Transcript</span></button>
+                        </div>
+                    </div>
+
+                    <div class="analytics-row-cards">
+                        <div class="metric-card accent-blue">
+                            <div class="metric-info">
+                                <h4>Semester GPA</h4>
+                                <h2 id="txt-gpa-semester">0.00</h2>
+                            </div>
+                            <div class="metric-icon-box"><i class="fas fa-graduation-cap"></i></div>
+                        </div>
+                        <div class="metric-card accent-gold">
+                            <div class="metric-info">
+                                <h4>Cumulative CGPA</h4>
+                                <h2 id="txt-gpa-cumulative">0.00</h2>
+                            </div>
+                            <div class="metric-icon-box"><i class="fas fa-award"></i></div>
+                        </div>
+                        <div class="metric-card accent-green">
+                            <div class="metric-info">
+                                <h4>Completed Courses</h4>
+                                <h2 id="txt-total-subjects">0</h2>
+                            </div>
+                            <div class="metric-icon-box"><i class="fas fa-book-open"></i></div>
+                        </div>
+                    </div>
+
+                    <div class="content-card shadow-card">
+                        <div class="card-title-header no-print">
+                            <h3><i class="fas fa-table-list"></i> Grade Registry</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Semester</th>
+                                        <th>Credits</th>
+                                        <th>Midterm (40)</th>
+                                        <th>Final (60)</th>
+                                        <th>Total (100)</th>
+                                        <th>Grade</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-results"></tbody>
+                            </table>
+                        </div>
+                        <div id="empty-results-state" class="empty-state hidden no-print">
+                            <i class="fas fa-inbox"></i>
+                            <p>No grade records found for this student yet.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== PROFILE PANEL ===== -->
+                <section id="panel-profile" class="sub-panel hidden no-print">
+                    <div class="view-header-title">
+                        <h2>Academic Profile</h2>
+                    </div>
+                    <div class="profile-layout-grid">
+                        <div class="content-card shadow-card profile-card-center">
+                            <div class="avatar-frame"><i class="fas fa-user-tie"></i></div>
+                            <h2 id="profile-card-name" class="margin-top-16">---</h2>
+                            <p id="profile-card-id" class="badge-text-id margin-top-8">---</p>
+                        </div>
+                        <div class="content-card shadow-card">
+                            <div class="card-title-header">
+                                <h3><i class="fas fa-shield-halved"></i> Enrollment Details</h3>
+                            </div>
+                            <div class="info-details-list">
+                                <div class="detail-row"><strong>Faculty</strong> <span id="prof-faculty">---</span>
+                                </div>
+                                <div class="detail-row"><strong>Department</strong> <span id="prof-dept">---</span>
+                                </div>
+                                <div class="detail-row"><strong>Current Semester</strong> <span
+                                        id="prof-semester">---</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== ADMIN PANEL ===== -->
+                <section id="panel-admin" class="sub-panel hidden no-print">
+                    <div class="view-header-title">
+                        <h2>Admin Panel</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openStudentCreationModal()"><i
+                                class="fas fa-user-plus"></i> <span class="btn-label">Add Student</span></button>
+                    </div>
+
+                    <div class="content-card shadow-card">
+                        <div class="card-title-header">
+                            <h3><i class="fas fa-users"></i> Student Records</h3>
+                            <div class="total-count-badge">
+                                Total: <strong id="admin-total-students">0</strong>
+                            </div>
+                        </div>
+                        <div class="search-bar-wrapper">
+                            <div class="field-icon-wrapper">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="admin-search-field" placeholder="Search by name or student ID..."
+                                    oninput="fetchAdministrativeStudentDataList()">
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Full Name</th>
+                                        <th>Department</th>
+                                        <th>Sem</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-admin-students"></tbody>
+                            </table>
+                        </div>
+                        <div id="empty-admin-state" class="empty-state hidden">
+                            <i class="fas fa-search"></i>
+                            <p>No students match your search criteria.</p>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- ========== STUDENT FORM MODAL ========== -->
+    <div id="modal-student-form" class="modal-window-wrapper hidden">
+        <div class="modal-card">
+            <div class="modal-card-header">
+                <h3 id="student-modal-title">Add New Student</h3>
+                <i class="fas fa-times close-icon-trigger" onclick="closeStudentFormModal()" aria-label="Close"></i>
+            </div>
+            <form onsubmit="handleStudentFormSubmission(event)">
+                <input type="hidden" id="form-student-uuid">
+                <div class="input-group">
+                    <label>Full Name</label>
+                    <input type="text" id="form-student-name" required placeholder="e.g. Ahmed Abdi Asair">
+                </div>
+                <div class="input-group">
+                    <label>Student ID</label>
+                    <input type="text" id="form-student-id" required placeholder="JIU/001/2026">
+                </div>
+                <div class="modal-double-fields-row">
+                    <div class="input-group">
+                        <label>Faculty</label>
+                        <input type="text" id="form-student-faculty" required value="Faculty of IT">
+                    </div>
+                    <div class="input-group">
+                        <label>Department</label>
+                        <input type="text" id="form-student-dept" required value="Computer Science">
+                    </div>
+                </div>
+                <div class="modal-double-fields-row">
+                    <div class="input-group">
+                        <label>Semester</label>
+                        <input type="number" id="form-student-sem" min="1" max="8" required value="1">
+                    </div>
+                    <div class="input-group" id="pass-field-visibility-node">
+                        <label>Password</label>
+                        <input type="password" id="form-student-pass" placeholder="Default: jiu12345">
+                    </div>
+                </div>
+                <div class="modal-footer-actions">
+                    <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="closeStudentFormModal()">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm">Save Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== SCORE FORM MODAL ========== -->
+    <div id="modal-score-form" class="modal-window-wrapper hidden">
+        <div class="modal-card">
+            <div class="modal-card-header">
+                <h3>Add Course Grade</h3>
+                <i class="fas fa-times close-icon-trigger" onclick="closeScoreFormModal()" aria-label="Close"></i>
+            </div>
+            <form onsubmit="handleScoreFormSubmission(event)">
+                <input type="hidden" id="form-score-target-student-uuid">
+                <div class="input-group">
+                    <label>Subject Name</label>
+                    <input type="text" id="form-score-subject" required placeholder="e.g. Web Development">
+                </div>
+                <div class="modal-double-fields-row">
+                    <div class="input-group">
+                        <label>Credit Hours</label>
+                        <input type="number" id="form-score-credits" min="1" max="6" required value="3">
+                    </div>
+                    <div class="input-group">
+                        <label>Semester</label>
+                        <input type="number" id="form-score-semester" min="1" max="8" required value="1">
+                    </div>
+                </div>
+                <div class="modal-double-fields-row">
+                    <div class="input-group">
+                        <label>Midterm (0 - 40)</label>
+                        <input type="number" id="form-score-midterm" min="0" max="40" step="0.1" value="0">
+                    </div>
+                    <div class="input-group">
+                        <label>Final (0 - 60)</label>
+                        <input type="number" id="form-score-final" min="0" max="60" step="0.1" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer-actions">
+                    <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="closeScoreFormModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Grade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== DELETE CONFIRMATION MODAL ========== -->
+    <div id="modal-confirm-delete" class="modal-window-wrapper hidden">
+        <div class="modal-card modal-card-sm">
+            <div class="confirm-icon-wrapper">
+                <div class="confirm-icon-circle danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+            </div>
+            <h3 class="confirm-title">Delete Student Record</h3>
+            <p class="confirm-message">This action is permanent and will remove all associated grade data. This cannot
+                be undone.</p>
+            <div class="modal-footer-actions confirm-actions">
+                <button class="btn btn-secondary btn-sm" onclick="closeDeleteConfirmModal()">Cancel</button>
+                <button id="btn-confirm-delete-action" class="btn btn-danger btn-sm">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
