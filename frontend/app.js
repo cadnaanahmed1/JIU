@@ -3,7 +3,8 @@
  * File: frontend/app.js
  */
 
-const API_BASE_URL = "http://localhost:5000/api";
+// const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "https://asayr-jiu.hf.space/api";
 const JIU_LOGO = "https://z-cdn-media.chatglm.cn/files/28654fbc-c7d2-4fc4-97e8-acd903af6b4a.png?auth_key=1879268441-b74f70a21fb848dcbf31df2a382b6932-0-40b9ad4fb5c63b6af961916dadf5040e";
 
 let currentAuthRole = "student";
