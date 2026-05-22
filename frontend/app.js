@@ -3,9 +3,7 @@
  * File: frontend/app.js
  */
 
-//const API_BASE_URL = "https://jiu-2.onrender.com/api";
-  //const API_BASE_URL = "https://jiu-2.onrender.com/api";
-const API_BASE_URL = "https://asayr-jiu.hf.space/api";
+const API_BASE_URL = "http://localhost:5000/api";
 const JIU_LOGO = "https://z-cdn-media.chatglm.cn/files/28654fbc-c7d2-4fc4-97e8-acd903af6b4a.png?auth_key=1879268441-b74f70a21fb848dcbf31df2a382b6932-0-40b9ad4fb5c63b6af961916dadf5040e";
 
 let currentAuthRole = "student";
@@ -13,6 +11,7 @@ let sessionStorageToken = localStorage.getItem("jiu_portal_token") || null;
 let sessionUserRecord = JSON.parse(localStorage.getItem("jiu_portal_user")) || null;
 let currentViewingStudentId = null;
 let pendingDeleteId = null;
+let pendingDeleteResultData = null;
 
 // ==========================================================================
 // INITIALIZATION
@@ -21,12 +20,14 @@ let pendingDeleteId = null;
 document.addEventListener("DOMContentLoaded", () => {
     evaluateSessionPersistenceOnMount();
 
+    // Close sidebar on resize to desktop
     window.addEventListener("resize", () => {
         if (window.innerWidth > 991) {
             closeSidebar();
         }
     });
 
+    // Close modals on Escape key
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
             closeStudentFormModal();
@@ -36,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Wire up delete confirm button
+    // Delete student confirm button
     const confirmBtn = document.getElementById("btn-confirm-delete-action");
     if (confirmBtn) {
         confirmBtn.addEventListener("click", async () => {
@@ -64,6 +65,46 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // Delete result confirm button
+    const confirmResultBtn = document.getElementById("btn-confirm-delete-result-action");
+    if (confirmResultBtn) {
+        confirmResultBtn.addEventListener("click", async () => {
+            if (!pendingDeleteResultData) return;
+            const { studentId, index } = pendingDeleteResultData;
+            closeDeleteResultConfirmModal();
+
+            try {
+                toggleLoadingSpinner(true);
+                const response = await fetch(`${API_BASE_URL}/results/${studentId}/${index}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${sessionStorageToken}` }
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || "Failed to delete grade.");
+
+                displaySystemAlertNotification("Grade record deleted.");
+                if (currentViewingStudentId) {
+                    fetchStudentPersonaDataset(currentViewingStudentId);
+                }
+
+            } catch (err) {
+                displaySystemAlertNotification(err.message, "error");
+            } finally {
+                toggleLoadingSpinner(false);
+            }
+        });
+    }
+
+    // Escape key handler for new modals (separate listener to avoid modifying existing code)
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            closePasswordResetModal();
+            closeEditResultModal();
+            closeDeleteResultConfirmModal();
+        }
+    });
 });
 
 // ==========================================================================
@@ -148,6 +189,7 @@ function switchLoginTab(role) {
         if (inputIdentity) inputIdentity.placeholder = "JIU/001/2026";
     }
 
+    // Clear fields on tab switch
     if (inputIdentity) inputIdentity.value = "";
     const passField = document.getElementById("input-secret");
     if (passField) passField.value = "";
@@ -191,6 +233,7 @@ async function executeAuthenticationForm(event) {
         evaluateSessionPersistenceOnMount();
         displaySystemAlertNotification("Welcome to JIU Portal.");
 
+        // Clear form
         document.getElementById("input-identity").value = "";
         document.getElementById("input-secret").value = "";
 
@@ -261,6 +304,7 @@ function navigateToPanel(panelName) {
 
     closeSidebar();
 
+    // Hide all panels, deactivate all menu items
     panels.forEach(p => {
         const panel = document.getElementById(`panel-${p}`);
         const menu = document.getElementById(`menu-item-${p}`);
@@ -268,11 +312,13 @@ function navigateToPanel(panelName) {
         if (menu) menu.classList.remove("active");
     });
 
+    // Activate selected
     const activePanel = document.getElementById(`panel-${panelName}`);
     const activeMenu = document.getElementById(`menu-item-${panelName}`);
     if (activePanel) activePanel.classList.remove("hidden");
     if (activeMenu) activeMenu.classList.add("active");
 
+    // Back button for admin viewing student transcript
     if (btnBackAdmin) {
         if (panelName === "dashboard" && cachedRole === "admin") {
             btnBackAdmin.classList.remove("hidden");
@@ -281,6 +327,7 @@ function navigateToPanel(panelName) {
         }
     }
 
+    // Load data based on panel
     if (panelName === "dashboard" || panelName === "profile") {
         if (cachedRole === "student" && sessionUserRecord) {
             fetchStudentPersonaDataset(sessionUserRecord.id);
@@ -310,16 +357,19 @@ async function fetchStudentPersonaDataset(studentMongoId) {
 
         currentViewingStudentId = studentMongoId;
 
+        // Update metric cards
         setTextContent("txt-gpa-semester", Number(data.semesterGPA || 0).toFixed(2));
         setTextContent("txt-gpa-cumulative", Number(data.overallGPA || 0).toFixed(2));
         setTextContent("txt-total-subjects", data.results ? data.results.length : 0);
 
+        // Update profile fields
         setTextContent("profile-card-name", data.fullname || "---");
         setTextContent("profile-card-id", data.studentId || "---");
         setTextContent("prof-faculty", data.faculty || "---");
         setTextContent("prof-dept", data.department || "---");
         setTextContent("prof-semester", data.semester ? `Semester ${data.semester}` : "---");
 
+        // Update print letterhead
         const printSummary = document.getElementById("print-student-meta-summary");
         if (printSummary) {
             printSummary.innerHTML = `
@@ -332,6 +382,7 @@ async function fetchStudentPersonaDataset(studentMongoId) {
             `;
         }
 
+        // Render results table
         renderResultsTable(data.results);
 
     } catch (err) {
@@ -356,13 +407,33 @@ function renderResultsTable(results) {
 
     if (emptyState) emptyState.classList.add("hidden");
 
-    results.forEach(res => {
+    const isAdminViewing = localStorage.getItem("jiu_portal_role") === "admin";
+
+    results.forEach((res, index) => {
         const tr = document.createElement("tr");
         const isFailing = res.grade === "F" || res.grade === "Incomplete";
         const gradeClass = isFailing ? "badge-grade badge-grade-f" : "badge-grade";
 
+        // Build subject cell with optional admin action buttons
+        let subjectCellContent = `<strong>${escapeHtml(res.subject)}</strong>`;
+        if (isAdminViewing && currentViewingStudentId) {
+            subjectCellContent = `
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <strong>${escapeHtml(res.subject)}</strong>
+                    <div class="result-row-actions">
+                        <button type="button" class="btn-edit-result" title="Edit grade" onclick="openEditResultModal(${index})">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button type="button" class="btn-delete-result" title="Delete grade" onclick="openDeleteResultConfirmModal(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
         tr.innerHTML = `
-            <td><strong>${escapeHtml(res.subject)}</strong></td>
+            <td>${subjectCellContent}</td>
             <td>S${res.semester}</td>
             <td>${res.credit}</td>
             <td>${res.midterm}</td>
@@ -418,6 +489,15 @@ async function fetchAdministrativeStudentDataList() {
                         <button class="btn btn-success btn-sm" onclick="viewSingleStudentTranscript('${student._id}')">
                             <i class="fas fa-eye"></i> <span class="btn-label">View</span>
                         </button>
+                        <button class="btn btn-secondary btn-sm" onclick="openEditStudentModal(
+                            '${student._id}',
+                            '${escapeHtml(student.fullname)}',
+                            '${escapeHtml(student.faculty)}',
+                            '${escapeHtml(student.department)}',
+                            ${student.semester}
+                        )">
+                            <i class="fas fa-pen"></i> <span class="btn-label">Edit</span>
+                        </button>
                         <button class="btn btn-primary btn-sm" onclick="openScoreFormModal('${student._id}')">
                             <i class="fas fa-plus"></i> <span class="btn-label">Grade</span>
                         </button>
@@ -441,7 +521,7 @@ function viewSingleStudentTranscript(studentMongoId) {
 }
 
 // ==========================================================================
-// MODALS: STUDENT FORM
+// MODALS: STUDENT FORM (Add & Edit)
 // ==========================================================================
 
 function openStudentCreationModal() {
@@ -454,8 +534,36 @@ function openStudentCreationModal() {
     document.getElementById("form-student-pass").value = "";
     document.getElementById("student-modal-title").textContent = "Add New Student";
 
+    // Show password field for new students
     const passNode = document.getElementById("pass-field-visibility-node");
     if (passNode) passNode.classList.remove("hidden");
+
+    // Show student ID field for new students
+    const idGroup = document.getElementById("field-student-id-group");
+    if (idGroup) idGroup.classList.remove("hidden");
+
+    // Enable student ID input
+    const idInput = document.getElementById("form-student-id");
+    if (idInput) idInput.disabled = false;
+
+    document.getElementById("modal-student-form").classList.remove("hidden");
+}
+
+function openEditStudentModal(uuid, name, faculty, dept, semester) {
+    document.getElementById("form-student-uuid").value = uuid;
+    document.getElementById("form-student-name").value = name;
+    document.getElementById("form-student-faculty").value = faculty;
+    document.getElementById("form-student-dept").value = dept;
+    document.getElementById("form-student-sem").value = semester;
+    document.getElementById("student-modal-title").textContent = "Edit Student";
+
+    // Hide password field when editing
+    const passNode = document.getElementById("pass-field-visibility-node");
+    if (passNode) passNode.classList.add("hidden");
+
+    // Hide student ID field when editing (ID should not change)
+    const idGroup = document.getElementById("field-student-id-group");
+    if (idGroup) idGroup.classList.add("hidden");
 
     document.getElementById("modal-student-form").classList.remove("hidden");
 }
@@ -566,6 +674,7 @@ async function handleScoreFormSubmission(event) {
         displaySystemAlertNotification("Grade saved successfully.");
         closeScoreFormModal();
 
+        // Refresh both views if admin is looking at this student
         currentViewingStudentId = targetUuid;
         if (sessionUserRecord && sessionUserRecord.id === targetUuid) {
             fetchStudentPersonaDataset(targetUuid);
@@ -580,7 +689,7 @@ async function handleScoreFormSubmission(event) {
 }
 
 // ==========================================================================
-// MODALS: DELETE CONFIRMATION
+// MODALS: DELETE CONFIRMATION (Student)
 // ==========================================================================
 
 function openDeleteConfirmModal(studentId) {
@@ -591,6 +700,174 @@ function openDeleteConfirmModal(studentId) {
 function closeDeleteConfirmModal() {
     pendingDeleteId = null;
     document.getElementById("modal-confirm-delete").classList.add("hidden");
+}
+
+// ==========================================================================
+// MODALS: PASSWORD RESET (Admin resets student password)
+// ==========================================================================
+
+function openPasswordResetModal() {
+    document.getElementById("reset-student-id").value = "";
+    document.getElementById("reset-new-password").value = "";
+    document.getElementById("reset-confirm-password").value = "";
+    document.getElementById("modal-password-reset").classList.remove("hidden");
+}
+
+function closePasswordResetModal() {
+    document.getElementById("modal-password-reset").classList.add("hidden");
+}
+
+async function handlePasswordReset(event) {
+    event.preventDefault();
+
+    const studentId = document.getElementById("reset-student-id").value.trim();
+    const newPassword = document.getElementById("reset-new-password").value;
+    const confirmPassword = document.getElementById("reset-confirm-password").value;
+
+    if (!studentId) {
+        displaySystemAlertNotification("Please enter the Student ID.", "error");
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        displaySystemAlertNotification("Password must be at least 6 characters.", "error");
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        displaySystemAlertNotification("Passwords do not match.", "error");
+        return;
+    }
+
+    try {
+        toggleLoadingSpinner(true);
+        const response = await fetch(`${API_BASE_URL}/students/reset-password`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${sessionStorageToken}`
+            },
+            body: JSON.stringify({ studentId: studentId, newPassword: newPassword })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || "Failed to reset password.");
+
+        displaySystemAlertNotification("Password reset successfully.");
+        closePasswordResetModal();
+
+    } catch (err) {
+        displaySystemAlertNotification(err.message, "error");
+    } finally {
+        toggleLoadingSpinner(false);
+    }
+}
+
+// ==========================================================================
+// MODALS: EDIT RESULT (Admin edits individual grade)
+// ==========================================================================
+
+function openEditResultModal(resultIndex) {
+    if (!currentViewingStudentId) {
+        displaySystemAlertNotification("No student selected.", "error");
+        return;
+    }
+
+    // Fetch fresh student data to get current result values
+    fetch(`${API_BASE_URL}/students/${currentViewingStudentId}`, {
+        headers: { "Authorization": `Bearer ${sessionStorageToken}` }
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.results || !data.results[resultIndex]) {
+                displaySystemAlertNotification("Grade record not found.", "error");
+                return;
+            }
+
+            const r = data.results[resultIndex];
+            document.getElementById("edit-result-student-uuid").value = currentViewingStudentId;
+            document.getElementById("edit-result-index").value = resultIndex;
+            document.getElementById("edit-result-subject").value = r.subject;
+            document.getElementById("edit-result-credits").value = r.credit;
+            document.getElementById("edit-result-semester").value = r.semester;
+            document.getElementById("edit-result-midterm").value = r.midterm;
+            document.getElementById("edit-result-final").value = r.final || 0;
+            document.getElementById("modal-edit-result").classList.remove("hidden");
+        })
+        .catch(err => {
+            displaySystemAlertNotification(err.message, "error");
+        });
+}
+
+function closeEditResultModal() {
+    document.getElementById("modal-edit-result").classList.add("hidden");
+}
+
+async function handleEditResultSubmission(event) {
+    event.preventDefault();
+
+    const studentUuid = document.getElementById("edit-result-student-uuid").value;
+    const resultIndex = parseInt(document.getElementById("edit-result-index").value);
+
+    if (!studentUuid) {
+        displaySystemAlertNotification("Student not specified.", "error");
+        return;
+    }
+
+    const payload = {
+        subject: document.getElementById("edit-result-subject").value.trim(),
+        credit: parseInt(document.getElementById("edit-result-credits").value),
+        semester: parseInt(document.getElementById("edit-result-semester").value),
+        midterm: parseFloat(document.getElementById("edit-result-midterm").value || 0),
+        final: parseFloat(document.getElementById("edit-result-final").value || 0)
+    };
+
+    if (!payload.subject) {
+        displaySystemAlertNotification("Please enter a subject name.", "error");
+        return;
+    }
+
+    try {
+        toggleLoadingSpinner(true);
+        const response = await fetch(`${API_BASE_URL}/results/${studentUuid}/${resultIndex}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${sessionStorageToken}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || "Failed to update grade.");
+
+        displaySystemAlertNotification("Grade updated successfully.");
+        closeEditResultModal();
+        fetchStudentPersonaDataset(studentUuid);
+
+    } catch (err) {
+        displaySystemAlertNotification(err.message, "error");
+    } finally {
+        toggleLoadingSpinner(false);
+    }
+}
+
+// ==========================================================================
+// MODALS: DELETE RESULT CONFIRMATION
+// ==========================================================================
+
+function openDeleteResultConfirmModal(resultIndex) {
+    if (!currentViewingStudentId) return;
+    pendingDeleteResultData = {
+        studentId: currentViewingStudentId,
+        index: resultIndex
+    };
+    document.getElementById("modal-confirm-delete-result").classList.remove("hidden");
+}
+
+function closeDeleteResultConfirmModal() {
+    pendingDeleteResultData = null;
+    document.getElementById("modal-confirm-delete-result").classList.add("hidden");
 }
 
 // ==========================================================================
