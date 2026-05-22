@@ -210,8 +210,12 @@
                 <section id="panel-admin" class="sub-panel hidden no-print">
                     <div class="view-header-title">
                         <h2>Admin Panel</h2>
-                        <button class="btn btn-primary btn-sm" onclick="openStudentCreationModal()"><i
-                                class="fas fa-user-plus"></i> <span class="btn-label">Add Student</span></button>
+                        <div class="action-buttons-row">
+                            <button class="btn btn-secondary btn-sm" onclick="openPasswordResetModal()"><i
+                                    class="fas fa-key"></i> <span class="btn-label">Reset Password</span></button>
+                            <button class="btn btn-primary btn-sm" onclick="openStudentCreationModal()"><i
+                                    class="fas fa-user-plus"></i> <span class="btn-label">Add Student</span></button>
+                        </div>
                     </div>
 
                     <div class="content-card shadow-card">
@@ -263,13 +267,13 @@
             </div>
             <form onsubmit="handleStudentFormSubmission(event)">
                 <input type="hidden" id="form-student-uuid">
+                <div class="input-group" id="field-student-id-group">
+                    <label>Student ID</label>
+                    <input type="text" id="form-student-id" required placeholder="JIU/001/2026">
+                </div>
                 <div class="input-group">
                     <label>Full Name</label>
                     <input type="text" id="form-student-name" required placeholder="e.g. Ahmed Abdi Asair">
-                </div>
-                <div class="input-group">
-                    <label>Student ID</label>
-                    <input type="text" id="form-student-id" required placeholder="JIU/001/2026">
                 </div>
                 <div class="modal-double-fields-row">
                     <div class="input-group">
@@ -356,6 +360,106 @@
             <div class="modal-footer-actions confirm-actions">
                 <button class="btn btn-secondary btn-sm" onclick="closeDeleteConfirmModal()">Cancel</button>
                 <button id="btn-confirm-delete-action" class="btn btn-danger btn-sm">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PASSWORD RESET MODAL ========== -->
+    <div id="modal-password-reset" class="modal-window-wrapper hidden">
+        <div class="modal-card modal-card-sm">
+            <div class="modal-card-header">
+                <h3>Reset Student Password</h3>
+                <i class="fas fa-times close-icon-trigger" onclick="closePasswordResetModal()" aria-label="Close"></i>
+            </div>
+            <form onsubmit="handlePasswordReset(event)">
+                <div class="input-group">
+                    <label>Student ID</label>
+                    <div class="field-icon-wrapper">
+                        <i class="fas fa-id-card"></i>
+                        <input type="text" id="reset-student-id" required placeholder="JIU/001/2026">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>New Password</label>
+                    <div class="field-icon-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="reset-new-password" required placeholder="Enter new password"
+                            minlength="6">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Confirm New Password</label>
+                    <div class="field-icon-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="reset-confirm-password" required placeholder="Confirm new password"
+                            minlength="6">
+                    </div>
+                </div>
+                <div class="modal-footer-actions">
+                    <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="closePasswordResetModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== EDIT RESULT MODAL ========== -->
+    <div id="modal-edit-result" class="modal-window-wrapper hidden">
+        <div class="modal-card">
+            <div class="modal-card-header">
+                <h3>Edit Course Grade</h3>
+                <i class="fas fa-times close-icon-trigger" onclick="closeEditResultModal()" aria-label="Close"></i>
+            </div>
+            <form onsubmit="handleEditResultSubmission(event)">
+                <input type="hidden" id="edit-result-student-uuid">
+                <input type="hidden" id="edit-result-index">
+                <div class="input-group">
+                    <label>Subject Name</label>
+                    <input type="text" id="edit-result-subject" required>
+                </div>
+                <div class="modal-double-fields-row">
+                    <div class="input-group">
+                        <label>Credit Hours</label>
+                        <input type="number" id="edit-result-credits" min="1" max="6" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Semester</label>
+                        <input type="number" id="edit-result-semester" min="1" max="8" required>
+                    </div>
+                </div>
+                <div class="modal-double-fields-row">
+                    <div class="input-group">
+                        <label>Midterm (0 - 40)</label>
+                        <input type="number" id="edit-result-midterm" min="0" max="40" step="0.1" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Final (0 - 60)</label>
+                        <input type="number" id="edit-result-final" min="0" max="60" step="0.1" required>
+                    </div>
+                </div>
+                <div class="modal-footer-actions">
+                    <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="closeEditResultModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Update Grade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== DELETE RESULT CONFIRMATION MODAL ========== -->
+    <div id="modal-confirm-delete-result" class="modal-window-wrapper hidden">
+        <div class="modal-card modal-card-sm">
+            <div class="confirm-icon-wrapper">
+                <div class="confirm-icon-circle danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+            </div>
+            <h3 class="confirm-title">Delete Course Grade</h3>
+            <p class="confirm-message">Are you sure you want to remove this grade record? This cannot be undone.</p>
+            <div class="modal-footer-actions confirm-actions">
+                <button class="btn btn-secondary btn-sm" onclick="closeDeleteResultConfirmModal()">Cancel</button>
+                <button id="btn-confirm-delete-result-action" class="btn btn-danger btn-sm">Yes, Delete</button>
             </div>
         </div>
     </div>
