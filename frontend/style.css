@@ -100,7 +100,7 @@ img {
 }
 
 /* ==========================================================================
-   UTILITY CLASSES (previously missing)
+   UTILITY CLASSES
    ========================================================================== */
 
 .text-center {
@@ -966,6 +966,45 @@ img {
     flex-wrap: wrap;
 }
 
+/* Inline result row action buttons (edit/delete grades) */
+.result-row-actions {
+    display: inline-flex;
+    gap: 4px;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.result-row-actions button {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    transition: var(--transition-fast);
+}
+
+.result-row-actions .btn-edit-result {
+    background: rgba(14, 116, 144, 0.08);
+    color: var(--primary);
+}
+
+.result-row-actions .btn-edit-result:hover {
+    background: rgba(14, 116, 144, 0.18);
+}
+
+.result-row-actions .btn-delete-result {
+    background: rgba(220, 38, 38, 0.08);
+    color: var(--danger);
+}
+
+.result-row-actions .btn-delete-result:hover {
+    background: rgba(220, 38, 38, 0.18);
+}
+
 /* Empty State */
 .empty-state {
     text-align: center;
@@ -1165,6 +1204,14 @@ img {
     margin-bottom: 4px;
 }
 
+/* Disabled input styling (used when editing student) */
+.input-group input:disabled {
+    background: var(--bg-page);
+    color: var(--text-light);
+    cursor: not-allowed;
+    border-style: dashed;
+}
+
 /* ==========================================================================
    PRINT LETTERHEAD (hidden on screen, visible only in print)
    ========================================================================== */
@@ -1303,6 +1350,17 @@ img {
 
     .modal-card {
         padding: 24px 20px;
+    }
+
+    .result-row-actions {
+        margin-left: 4px;
+        gap: 3px;
+    }
+
+    .result-row-actions button {
+        width: 24px;
+        height: 24px;
+        font-size: 0.65rem;
     }
 }
 
