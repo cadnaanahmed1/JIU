@@ -499,8 +499,8 @@ app.get("/api", (req, res) => {
     });
 });
 
-// Catch-all for SPA
-app.get("*", (req, res) => {
+// Catch-all for SPA (Express 5 syntax)
+app.get("/{*path}", (req, res) => {
     const indexPath = path.join(frontendDir, "index.html");
     if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
